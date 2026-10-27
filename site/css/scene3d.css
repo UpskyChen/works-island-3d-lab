@@ -1,0 +1,25 @@
+/* 3D 視覺實驗版：Three.js 畫布在 SVG 下層；SVG 只留文字、節點、連線、印章與透明的點擊範圍 */
+.scene3d {
+  position: absolute; left: -24px; top: -24px; /* 和 scene3d.js 的 PAD 相同：四周多畫一點，視差平移時不露底 */
+  display: block; pointer-events: none;
+}
+.stage.has-3d { background: #0e5a7d; }
+.has-3d .island-map { position: relative; } /* 疊在畫布上面（畫布是 absolute，否則會蓋住 SVG） */
+.stage.has-3d .sea-fx { display: none; } /* 水波與小船改在 3D 場景裡 */
+
+/* 地形、倒影、裝飾、步道、景物由 3D 畫；島的頂面留著當作點擊／滑過分區的範圍 */
+.has-3d .shadows, .has-3d .decor, .has-3d .walkways, .has-3d .scenery, .has-3d .zone-art { display: none; }
+.has-3d .island .foam, .has-3d .island .side, .has-3d .island .shore, .has-3d .island .top-light { display: none; }
+.has-3d .island .top { fill: transparent; }
+.has-3d .island .cell-tint { fill: #fff; fill-opacity: .2; stroke: #fff; stroke-opacity: .55; stroke-width: 1.4; }
+.has-3d .island .cell-lot { fill: #fff; fill-opacity: .12; stroke: #fff; stroke-opacity: .7; }
+/* 開場：地塊由 3D 場景負責浮出，SVG 的點擊範圍不用動畫 */
+.has-3d.intro .island { animation: none; }
+
+.lab-note { margin-top: 6px; font-size: .82rem; letter-spacing: .04em; }
+
+@media (prefers-color-scheme: dark) {
+  .stage.has-3d { background: #062638; }
+  .has-3d .island .cell-tint { fill: #000; fill-opacity: .16; stroke: #fff; stroke-opacity: .25; }
+  .has-3d .island .cell-lot { fill: #000; fill-opacity: .14; stroke: #fff; stroke-opacity: .35; }
+}

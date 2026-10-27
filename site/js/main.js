@@ -1,5 +1,6 @@
 // 組裝：讀資料 → 標題／關於我／圖例 → 地圖、面板、詳情卡、清單 → 路由、工具列、帶我逛逛、視差
 // 畫面上的文字全部來自 works.json（ui 段與作品資料），這裡不寫死任何文字或網址。
+// 3D 視覺實驗版：地圖本體改由 scene3d.js（Three.js）畫在 SVG 下層；載入失敗或沒有 WebGL 時自動退回 2.5D SVG。
 import { el, on, reducedMotion, setStatusLegend } from './util.js';
 import { setText, applyText, t } from './text.js';
 import { createParallax } from './parallax.js';
@@ -17,9 +18,14 @@ import { createGuide, HINTS } from './guide.js';
 
 const $ = (id) => document.getElementById(id);
 const TOUR_MS = 4500;
+// 和資料檔同時下載；舊瀏覽器不支援 importmap 或載入失敗時回傳 null（地圖照舊用 2.5D 版）
+const scene3dModule = import('./scene3d.js').catch((err) => {
+  console.warn('[3D] 3D 模組載入失敗，改用 2.5D 版地圖', err);
+  return null;
+});
 
 async function start() {
-  const [{ model, layoutConfig }, propsDoc] = await Promise.all([loadData(), loadProps()]);
+  const [{ model, layoutConfig }, propsDoc, s3dModule] = await Promise.all([loadData(), loadProps(), scene3dModule]);
   setText(model.ui);
   setStatusLegend(model.statusLegend);
   applyText();
@@ -32,6 +38,8 @@ async function start() {
   if (window.innerWidth < 1000) $('about').open = false; // 窄螢幕先收合「關於我」，讓地圖早點出現
 
   const stage = $('stage');
+  const s3d = s3dModule ? s3dModule.createScene3D() : null;
+  stage.classList.toggle('has-3d', !!s3d);
   const panelEl = $('panel');
   const detailEl = $('detail');
   const toolbar = $('toolbar');
@@ -62,14 +70,18 @@ async function start() {
     onBackground: () => { stopTour(); clearSelection(); },
     onZone: (zid) => selectZone(zid),
     onZoneHover: (zid, e) => hoverZone(zid, e),
-    onDrag: (dx, dy, ended) => parallax.drag(dx, dy, ended)
+    onDrag: (dx, dy, ended) => parallax.drag(dx, dy, ended),
+    underlay: s3d && s3d.canvas,
+    tilts: s3d && s3d.tilts,
+    onView: s3d && s3d.setView
   });
   const parallax = createParallax(stage, {
-    sea: stage.querySelector('.sea-fx'),
+    sea: s3d ? null : stage.querySelector('.sea-fx'),
     land: $('map'),
     sky: stage.querySelector('.sky-fx'),
     shadows: () => map.layers.shadows,
-    scale: () => map.cam.k
+    scale: () => map.cam.k,
+    onMove: s3d && s3d.setParallax
   });
   const detail = createDetail(detailEl, model, {
     onClose: () => clearSelection({ returnFocus: true }),
@@ -96,6 +108,7 @@ async function start() {
     app.layoutKey = pickLayoutKey(layoutConfig, stage.clientWidth || window.innerWidth);
     const lay = computeLayout(model, layoutConfig, app.layoutKey);
     const layers = map.build(model, lay, propsDoc, { intro });
+    if (s3d) s3d.build(lay, map.props3d, { intro });
     drawLinks(layers.links, model, lay);
     drawNodes(layers.nodes, model, lay, { onActivate: (id, o) => select(id, { source: 'map', focusCard: o.keyboard }), wasDragged: map.wasDragged });
     setLinksVisible(layers.links, app.linksOn);

@@ -2,6 +2,10 @@
 // 高低彎度不同的步道、景物與地標（依 y 值排序前後遮擋）、分區標籤、空地告示牌、已逛完章、插圖資產槽，
 // 以及鏡頭（平滑聚焦並微調傾角、拖曳、雙指縮放）。
 //
+// 3D 視覺實驗版：有 opts.underlay（Three.js 畫布）時，地形、裝飾、步道、景物改由 3D 場景畫在 SVG 下層，
+// SVG 只留文字、節點、連線、印章與透明的點擊範圍（.has-3d）；每次更新 viewBox 都經 opts.onView 通知 3D 場景對齊鏡頭。
+// 瀏覽器不支援 WebGL 時沒有 underlay，整張地圖照舊是 2.5D SVG。
+//
 // 圖層：ground（平貼在地面、跟著傾角壓縮：倒影、裝飾、步道、島、作品連線）
 //      upright（直立物：景物、地標、告示牌，依底部 y 值排序）→ titles（標籤）→ stamps → nodes
 // 直立物與文字不會被傾角壓扁，只會跟著地面移動位置。
@@ -9,8 +13,6 @@ import { svg, textUnits, reducedMotion, emit } from './util.js';
 import { t } from './text.js';
 import { rng, smoothPath, pointInPoly, walkwayGeom } from './terrain.js';
 
-const TILT_PANO = 1;
-const TILT_FOCUS = 1.1; // 聚焦時地面稍微拉高，像鏡頭微微抬頭
 const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const grow = (r, d) => ({ x: r.x - d, y: r.y - d, w: r.w + d * 2, h: r.h + d * 2 });
 const f1 = (v) => v.toFixed(1);
@@ -21,8 +23,13 @@ export function createMap(stage, host, opts) {
   // 鏡頭補間用的外層：transform 加在這個 div 上（加在 <svg> 本身會讓整張地圖每格重新排版）
   const camEl = document.createElement('div');
   camEl.className = 'cam-layer';
+  if (opts.underlay) camEl.appendChild(opts.underlay);
   camEl.appendChild(svgEl);
   host.appendChild(camEl);
+  const has3d = !!opts.underlay;
+  // 傾角：2.5D 版全景 1、聚焦 1.1（地面稍微拉高）；3D 版是真實俯角的 sin
+  const TILT_PANO = opts.tilts ? opts.tilts.pano : 1;
+  const TILT_FOCUS = opts.tilts ? opts.tilts.focus : 1.1;
 
   let layout = null;
   let cam = { vx: 0, vy: 0, k: 1 };
@@ -36,6 +43,7 @@ export function createMap(stage, host, opts) {
   let uprightEls = [];
   const layers = {};
   const labelBoxes = {};
+  let props3d = [];
 
   const P = (y, tt = tilt) => pivot + (y - pivot) * tt;
 
@@ -48,7 +56,8 @@ export function createMap(stage, host, opts) {
     const cfg = lay.config;
     const D = m.depth;
     svgEl.textContent = '';
-    svgEl.setAttribute('class', 'island-map nodes-' + lay.mode + (intro && !reducedMotion() ? ' intro' : ''));
+    svgEl.setAttribute('class', 'island-map nodes-' + lay.mode + (has3d ? ' has-3d' : '') + (intro && !reducedMotion() ? ' intro' : ''));
+    props3d = [];
 
     layers.ground = svg('g', { class: 'ground' });
     layers.shadows = svg('g', { class: 'shadows', 'aria-hidden': 'true' });
@@ -92,9 +101,10 @@ export function createMap(stage, host, opts) {
           svg('path', { class: 'shore', d: smoothPath(d.pts, { dx: d.x, dy: d.y }) }),
           svg('path', { class: 'top', d: smoothPath(d.pts, { dx: d.x, dy: d.y, s: 0.8 }) })
         ]));
-        if (d.prop && propsDoc) {
+        if (d.prop) {
           const size = (names ? 30 : 18);
-          addUpright(placeProp(propsDoc, d.prop, size), d.x, d.y + 2);
+          props3d.push({ name: d.prop, x: d.x, y: d.y + 2, size, islet: true });
+          if (propsDoc) addUpright(placeProp(propsDoc, d.prop, size), d.x, d.y + 2).classList.add('scenery');
         }
       }
     });
@@ -202,7 +212,10 @@ export function createMap(stage, host, opts) {
       });
 
       // 景物與地標：放在島上空著的地方
-      scenery(propsDoc, (cfg.scenery || {})[z.id], isl, busy, names).forEach((s) => addUpright(s.node, s.x, s.y));
+      scenery(propsDoc, (cfg.scenery || {})[z.id], isl, busy, names).forEach((s) => {
+        props3d.push({ name: s.name, x: s.x, y: s.y, size: s.size, zone: z.id });
+        if (s.node) addUpright(s.node, s.x, s.y).classList.add('scenery');
+      });
 
       // 插圖資產槽：設定了圖片且載入成功才取代 SVG 地塊；節點與文字永遠在 SVG 上層
       const art = (cfg.art || {})[z.id];
@@ -237,7 +250,7 @@ export function createMap(stage, host, opts) {
   // 景物：在島內以固定順序找空位（不碰節點、標籤、告示牌，也不超出島的邊緣）
   function scenery(propsDoc, conf, isl, busy, names) {
     const out = [];
-    if (!conf || !propsDoc) return out;
+    if (!conf) return out;
     const want = [conf.landmark ? 'l-' + conf.landmark.replace(/^l-/, '') : null, ...(conf.items || [])].filter(Boolean);
     const limit = names ? want.length : Math.min(want.length, 3);
     const P0 = isl.abs;
@@ -265,7 +278,7 @@ export function createMap(stage, host, opts) {
       });
       if (!spot) continue;
       placed.push({ x: spot[0], y: spot[1], size });
-      out.push({ node: placeProp(propsDoc, want[k], size, isl.zone.id), x: spot[0], y: spot[1] });
+      out.push({ node: propsDoc ? placeProp(propsDoc, want[k], size, isl.zone.id) : null, name: want[k], size, x: spot[0], y: spot[1] });
     }
     return out;
   }
@@ -346,6 +359,7 @@ export function createMap(stage, host, opts) {
   }
   function apply() {
     svgEl.setAttribute('viewBox', `${cam.vx.toFixed(2)} ${cam.vy.toFixed(2)} ${(W / cam.k).toFixed(2)} ${(H / cam.k).toFixed(2)}`);
+    if (opts.onView) opts.onView({ vx: cam.vx, vy: cam.vy, k: cam.k, W, H, tilt, pivot });
   }
   function safeRect() {
     const ins = opts.insets();
@@ -624,12 +638,13 @@ export function createMap(stage, host, opts) {
   }, { passive: false });
 
   return {
-    svg: svgEl, build, fitPanorama, focusWork, focusZone, zoomBy, refit, setStamps, refreshUprights,
+    svg: svgEl, camLayer: camEl, build, fitPanorama, focusWork, focusZone, zoomBy, refit, setStamps, refreshUprights,
     wasDragged: () => lastDragged,
     get cam() { return cam; },
     get tilt() { return tilt; },
     get layout() { return layout; },
-    get layers() { return layers; }
+    get layers() { return layers; },
+    get props3d() { return props3d; }
   };
 }
 
