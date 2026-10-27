@@ -23,3 +23,16 @@
   .has-3d .island .cell-tint { fill: #000; fill-opacity: .16; stroke: #fff; stroke-opacity: .25; }
   .has-3d .island .cell-lot { fill: #000; fill-opacity: .14; stroke: #fff; stroke-opacity: .35; }
 }
+
+/* 地圖還在等 3D 模組（最多數秒，見 main.js 的 MAX_3D_WAIT_MS）：先藏起地圖，顯示載入圈；頁首、面板、清單照常可用 */
+.stage.is-pending { background: #0e5a7d; }
+.stage.is-pending .sea-fx, .stage.is-pending .map, .stage.is-pending .sky-fx { visibility: hidden; }
+.stage.is-pending .toolbar { opacity: .5; pointer-events: none; }
+.stage.is-pending::after {
+  content: ""; position: absolute; left: 50%; top: 45%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  border-radius: 50%; border: 4px solid rgba(255, 255, 255, .25); border-top-color: rgba(255, 255, 255, .9);
+  animation: pending-spin .9s linear infinite;
+}
+@keyframes pending-spin { to { transform: rotate(360deg); } }
+@media (prefers-color-scheme: dark) { .stage.is-pending { background: #062638; } }
+@media (prefers-reduced-motion: reduce) { .stage.is-pending::after { animation: none; border-top-color: rgba(255, 255, 255, .6); } }

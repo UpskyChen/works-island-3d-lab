@@ -181,7 +181,7 @@
         "level": "verified-live",
         "levelLabel": "已驗證・線上運作",
         "date": "2026-10-26",
-        "note": "兩個 Google Sites 站殼實際開啟確認，內容為同一工具、計 1 件；紙本原作非站主，見 displayNote。"
+        "note": "兩個 Google Sites 站殼實際開啟確認，內容為同一工具、計 1 件；紙本原作非站主，見本卡說明。"
       },
       "zone": "subjects"
     },
@@ -345,7 +345,7 @@
         "level": "unverifiable-public",
         "levelLabel": "公開層無法驗證",
         "date": "2026-10-26",
-        "note": "公開層導向登入頁，內容未驗得；problem 與 result 照實留空，不編造。"
+        "note": "公開層導向登入頁，內容未驗得；問題與成果欄位照實留空，不編造。"
       },
       "zone": "subjects"
     },
@@ -575,7 +575,7 @@
         "level": "repo-checked",
         "levelLabel": "repo 已確認・凍結",
         "date": "2026-10-26",
-        "note": "repo 唯讀確認；功能完成、站主主動凍結成作品，原因見 freezeReason。"
+        "note": "repo 唯讀確認；功能完成、站主主動凍結成作品，凍結原因見本卡下方欄位。"
       },
       "zone": "frozen"
     },

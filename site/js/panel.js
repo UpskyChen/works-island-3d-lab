@@ -139,9 +139,17 @@ export function createPanel(root, model, { onSelect, onFilter, onLinkSelect, pro
     zoneList.querySelectorAll('.pz').forEach((g) => { g.querySelector('.done-chip').hidden = !progress.zoneDone(g.dataset.zone); });
   }
 
+  // 清掉搜尋字串與狀態篩選（「全景」回總覽時用）
+  function resetFilters() {
+    query = '';
+    search.value = '';
+    filter = 'all';
+    refresh();
+  }
+
   refresh();
   setProgress();
-  return { setSelected, refresh, setProgress, get selected() { return selected; } };
+  return { setSelected, refresh, setProgress, resetFilters, get selected() { return selected; } };
 }
 
 // 清單模式：給校長、主任快速掃描；每列可展開詳情，或「在島上定位」

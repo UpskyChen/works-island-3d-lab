@@ -18,6 +18,9 @@ import { createGuide, HINTS } from './guide.js';
 
 const $ = (id) => document.getElementById(id);
 const TOUR_MS = 4500;
+// 3D 模組（含 Three.js，約 180 KB gzip）最多等這麼久（從資料讀好起算）。超過就這次改用 2.5D 版地圖，
+// 不讓整個網站卡在空白的海面上；頁首、面板、清單不等它，資料一到就先出現。
+const MAX_3D_WAIT_MS = 6000;
 // 和資料檔同時下載；舊瀏覽器不支援 importmap 或載入失敗時回傳 null（地圖照舊用 2.5D 版）
 const scene3dModule = import('./scene3d.js').catch((err) => {
   console.warn('[3D] 3D 模組載入失敗，改用 2.5D 版地圖', err);
@@ -25,11 +28,11 @@ const scene3dModule = import('./scene3d.js').catch((err) => {
 });
 
 async function start() {
-  const [{ model, layoutConfig }, propsDoc, s3dModule] = await Promise.all([loadData(), loadProps(), scene3dModule]);
+  const [{ model, layoutConfig }, propsDoc] = await Promise.all([loadData(), loadProps()]);
   setText(model.ui);
   setStatusLegend(model.statusLegend);
   applyText();
-  const app = { selected: null, lastId: null, mode: 'map', linksOn: true, dimmed: null, layoutKey: null, tour: null };
+  const app = { selected: null, lastId: null, mode: 'map', linksOn: true, dimmed: null, layoutKey: null, tour: null, pending: null };
   const progress = createProgress(model);
   const guide = createGuide($('guide'));
 
@@ -38,8 +41,10 @@ async function start() {
   if (window.innerWidth < 1000) $('about').open = false; // 窄螢幕先收合「關於我」，讓地圖早點出現
 
   const stage = $('stage');
-  const s3d = s3dModule ? s3dModule.createScene3D() : null;
-  stage.classList.toggle('has-3d', !!s3d);
+  let s3d = null; // 3D 模組載好後才建立（見「啟動」）
+  // 地圖還在等 3D 模組：先藏起地圖、顯示載入圈；其他區塊照常可用
+  stage.classList.add('is-pending');
+  stage.setAttribute('aria-busy', 'true');
   const panelEl = $('panel');
   const detailEl = $('detail');
   const toolbar = $('toolbar');
@@ -70,18 +75,15 @@ async function start() {
     onBackground: () => { stopTour(); clearSelection(); },
     onZone: (zid) => selectZone(zid),
     onZoneHover: (zid, e) => hoverZone(zid, e),
-    onDrag: (dx, dy, ended) => parallax.drag(dx, dy, ended),
-    underlay: s3d && s3d.canvas,
-    tilts: s3d && s3d.tilts,
-    onView: s3d && s3d.setView
+    onDrag: (dx, dy, ended) => parallax.drag(dx, dy, ended)
   });
   const parallax = createParallax(stage, {
-    sea: s3d ? null : stage.querySelector('.sea-fx'),
+    sea: stage.querySelector('.sea-fx'), // 3D 版時 .sea-fx 已隱藏，位移它沒有影響
     land: $('map'),
     sky: stage.querySelector('.sky-fx'),
     shadows: () => map.layers.shadows,
     scale: () => map.cam.k,
-    onMove: s3d && s3d.setParallax
+    onMove: (x, y) => { if (s3d) s3d.setParallax(x, y); }
   });
   const detail = createDetail(detailEl, model, {
     onClose: () => clearSelection({ returnFocus: true }),
@@ -113,10 +115,10 @@ async function start() {
     drawNodes(layers.nodes, model, lay, { onActivate: (id, o) => select(id, { source: 'map', focusCard: o.keyboard }), wasDragged: map.wasDragged });
     setLinksVisible(layers.links, app.linksOn);
     map.setStamps(progress.doneZones()); // 也會重新定位所有直立物（含剛畫好的節點）
-    // 鍵盤聚焦節點時，左側卡預覽該分區
+    // 鍵盤聚焦節點時，左側卡預覽該分區（只限鍵盤：滑鼠或手指按下節點也會聚焦，那時不預覽，拖曳才不會帶出分區卡）
     layers.nodes.addEventListener('focusin', (e) => {
       const n = e.target.closest('.node');
-      if (n && !app.quietFocus) detail.showZone(n.getAttribute('data-zone'));
+      if (n && !app.quietFocus && n.matches(':focus-visible')) detail.showZone(n.getAttribute('data-zone'));
     });
     app.layers = layers;
     mark();
@@ -160,6 +162,7 @@ async function start() {
   // ---------- 選取與聚焦 ----------
   function select(id, { source = 'map', push = true, focusCard = false, animate = true } = {}) {
     if (!model.byId[id]) return;
+    if (!app.layers) { app.pending = id; return; } // 地圖還沒建好：記下來，建好後再選
     if (source !== 'tour') stopTour();
     if (app.mode !== 'map') setMode('map');
     app.selected = id;
@@ -188,6 +191,7 @@ async function start() {
   }
 
   function clearSelection({ push = true, returnFocus = false } = {}) {
+    if (!app.layers) { app.pending = null; return; }
     const prev = app.selected;
     app.selected = null;
     mark();
@@ -267,10 +271,10 @@ async function start() {
   }
   toolbar.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-act]');
-    if (!b) return;
+    if (!b || !app.layers) return;
     const act = b.dataset.act;
     if (act !== 'tour') stopTour();
-    if (act === 'pano') clearSelection();
+    if (act === 'pano') backToOverview();
     else if (act === 'zone' && app.lastId) select(app.lastId, { source: 'toolbar' });
     else if (act === 'in') map.zoomBy(1.4);
     else if (act === 'out') map.zoomBy(1 / 1.4);
@@ -303,6 +307,16 @@ async function start() {
   }
   on('user-interact', stopTour);
 
+  // 「全景」：回到乾淨的總覽。關掉左側分區／作品卡與右側面板，清掉搜尋與篩選；
+  // 探索進度是存著的資料，不清除
+  function backToOverview() {
+    clearTimeout(hoverTimer);
+    clearSelection();
+    detail.close();
+    panel.resetFilters();
+    if (isOverlay(panelEl) && !panelEl.classList.contains('is-collapsed')) setPanelCollapsed(true);
+  }
+
   // ---------- 右側面板收合 ----------
   function setPanelCollapsed(c) {
     panelEl.classList.toggle('is-collapsed', c);
@@ -325,6 +339,14 @@ async function start() {
   tb('tilt').hidden = !(parallax.tiltSupported && window.matchMedia('(pointer: coarse)').matches && !reducedMotion());
 
   // ---------- 啟動 ----------
+  // 等 3D 模組（最多 MAX_3D_WAIT_MS）；沒有 WebGL、載入失敗或逾時都改用 2.5D 版，地圖一定會出現
+  const s3dModule = await Promise.race([scene3dModule, new Promise((ok) => setTimeout(() => ok('timeout'), MAX_3D_WAIT_MS))]);
+  if (s3dModule === 'timeout') console.warn('[3D] 3D 模組 ' + MAX_3D_WAIT_MS / 1000 + ' 秒內沒有載完，這次改用 2.5D 版地圖');
+  s3d = s3dModule && s3dModule !== 'timeout' ? s3dModule.createScene3D() : null;
+  if (s3d) map.use3d(s3d.canvas, s3d.tilts, s3d.setView);
+  stage.classList.toggle('has-3d', !!s3d);
+  stage.classList.remove('is-pending');
+  stage.removeAttribute('aria-busy');
   build(true);
   // 面板預設：寬螢幕展開，其餘收合（浮在地圖上時才有作用）
   const startCollapsed = isOverlay(panelEl) && stage.clientWidth < 1360;
@@ -332,7 +354,7 @@ async function start() {
   $('panel-open').hidden = !startCollapsed;
   map.refit(false);
   map.fitPanorama(false);
-  const initial = currentId();
+  const initial = app.pending || currentId();
   if (initial && model.byId[initial]) select(initial, { source: 'init', push: false, animate: false });
   else guide.say(HINTS.welcome);
   updateToolbar();
@@ -341,7 +363,7 @@ async function start() {
   new ResizeObserver(() => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (app.mode !== 'map') return;
+      if (app.mode !== 'map' || !app.layers) return;
       const key = pickLayoutKey(layoutConfig, stage.clientWidth);
       if (key !== app.layoutKey) {
         build(false);
