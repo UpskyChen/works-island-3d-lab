@@ -724,6 +724,16 @@ export function createScene3D() {
     return true;
   }
 
+  // 開場動畫跑不了（畫面不在視窗內、分頁在背景、切換成「減少動態效果」）時直接收尾：
+  // 島一律回到定位、顯示出來，不能停在海面下
+  function finishIntro() {
+    if (!intro) return;
+    intro.items.forEach(({ g }) => { g.position.y = 0; g.visible = true; });
+    intro = null;
+    renderer.shadowMap.needsUpdate = true;
+    dirty = true;
+  }
+
   // ---------- 繪製迴圈：鏡頭在動才 60 fps；平常 30 fps；看不到畫面、或「減少動態效果」時不跑 ----------
   function animating() {
     return visible && !document.hidden && !reducedMotion();
@@ -747,6 +757,7 @@ export function createScene3D() {
         if (c.mesh.position.x > c.max) c.mesh.position.x = c.min;
       });
     }
+    if (!moving) finishIntro();
     const introOn = moving && stepIntro(now);
     if (dirty || introOn || (moving && now - lastDraw >= 1000 / RENDER.idleFps - 2)) draw(now);
     if (moving || introOn) raf = requestAnimationFrame(tick);
@@ -788,7 +799,7 @@ export function createScene3D() {
   }).observe(canvas);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) requestRender(); });
   const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-  motionQuery.addEventListener('change', () => { intro = null; requestRender(); });
+  motionQuery.addEventListener('change', () => { finishIntro(); requestRender(); });
   onThemeChange(() => { if (last) build(last.lay, last.props); });
   canvas.addEventListener('webglcontextlost', (e) => e.preventDefault());
   canvas.addEventListener('webglcontextrestored', () => { if (last) build(last.lay, last.props); });

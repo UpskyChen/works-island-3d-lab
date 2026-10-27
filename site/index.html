@@ -11,9 +11,26 @@
   <link rel="stylesheet" href="css/scene3d.css">
   <!-- 3D 視覺實驗版：Three.js 放在 vendor/（不連外部 CDN），用 importmap 對應 "three" -->
   <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
-  <link rel="modulepreload" href="vendor/three/three.core.min.js">
-  <link rel="modulepreload" href="vendor/three/three.module.min.js">
-  <link rel="modulepreload" href="js/scene3d.js">
+  <link rel="modulepreload" href="vendor/three/three.core.min.js" fetchpriority="low">
+  <link rel="modulepreload" href="vendor/three/three.module.min.js" fetchpriority="low">
+  <link rel="modulepreload" href="js/scene3d.js" fetchpriority="low">
+  <!-- 首次載入：先列出所有模組，瀏覽器可以同時下載，不必一層一層等 import -->
+  <link rel="modulepreload" href="js/main.js">
+  <link rel="modulepreload" href="js/util.js">
+  <link rel="modulepreload" href="js/text.js">
+  <link rel="modulepreload" href="js/parallax.js">
+  <link rel="modulepreload" href="js/data-loader.js">
+  <link rel="modulepreload" href="js/layout.js">
+  <link rel="modulepreload" href="js/terrain.js">
+  <link rel="modulepreload" href="js/map.js">
+  <link rel="modulepreload" href="js/nodes.js">
+  <link rel="modulepreload" href="js/connections.js">
+  <link rel="modulepreload" href="js/panel.js">
+  <link rel="modulepreload" href="js/detail.js">
+  <link rel="modulepreload" href="js/router.js">
+  <link rel="modulepreload" href="js/progress.js">
+  <link rel="modulepreload" href="js/guide.js">
+  <link rel="modulepreload" href="js/theme3d.js">
 </head>
 <body>
   <header class="top wrap">

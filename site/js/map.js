@@ -2,9 +2,9 @@
 // 高低彎度不同的步道、景物與地標（依 y 值排序前後遮擋）、分區標籤、空地告示牌、已逛完章、插圖資產槽，
 // 以及鏡頭（平滑聚焦並微調傾角、拖曳、雙指縮放）。
 //
-// 3D 視覺實驗版：有 opts.underlay（Three.js 畫布）時，地形、裝飾、步道、景物改由 3D 場景畫在 SVG 下層，
-// SVG 只留文字、節點、連線、印章與透明的點擊範圍（.has-3d）；每次更新 viewBox 都經 opts.onView 通知 3D 場景對齊鏡頭。
-// 瀏覽器不支援 WebGL 時沒有 underlay，整張地圖照舊是 2.5D SVG。
+// 3D 視覺實驗版：呼叫 use3d()（交給它 Three.js 畫布）之後，地形、裝飾、步道、景物改由 3D 場景畫在 SVG 下層，
+// SVG 只留文字、節點、連線、印章與透明的點擊範圍（.has-3d）；每次更新 viewBox 都經 onView 通知 3D 場景對齊鏡頭。
+// 沒有呼叫 use3d()（瀏覽器不支援 WebGL、3D 模組沒載到）時，整張地圖照舊是 2.5D SVG。
 //
 // 圖層：ground（平貼在地面、跟著傾角壓縮：倒影、裝飾、步道、島、作品連線）
 //      upright（直立物：景物、地標、告示牌，依底部 y 值排序）→ titles（標籤）→ stamps → nodes
@@ -23,13 +23,13 @@ export function createMap(stage, host, opts) {
   // 鏡頭補間用的外層：transform 加在這個 div 上（加在 <svg> 本身會讓整張地圖每格重新排版）
   const camEl = document.createElement('div');
   camEl.className = 'cam-layer';
-  if (opts.underlay) camEl.appendChild(opts.underlay);
   camEl.appendChild(svgEl);
   host.appendChild(camEl);
-  const has3d = !!opts.underlay;
-  // 傾角：2.5D 版全景 1、聚焦 1.1（地面稍微拉高）；3D 版是真實俯角的 sin
-  const TILT_PANO = opts.tilts ? opts.tilts.pano : 1;
-  const TILT_FOCUS = opts.tilts ? opts.tilts.focus : 1.1;
+  let has3d = false;
+  let onView = null;
+  // 傾角：2.5D 版全景 1、聚焦 1.1（地面稍微拉高）；3D 版是真實俯角的 sin（use3d 時換掉）
+  let TILT_PANO = 1;
+  let TILT_FOCUS = 1.1;
 
   let layout = null;
   let cam = { vx: 0, vy: 0, k: 1 };
@@ -359,7 +359,7 @@ export function createMap(stage, host, opts) {
   }
   function apply() {
     svgEl.setAttribute('viewBox', `${cam.vx.toFixed(2)} ${cam.vy.toFixed(2)} ${(W / cam.k).toFixed(2)} ${(H / cam.k).toFixed(2)}`);
-    if (opts.onView) opts.onView({ vx: cam.vx, vy: cam.vy, k: cam.k, W, H, tilt, pivot });
+    if (onView) onView({ vx: cam.vx, vy: cam.vy, k: cam.k, W, H, tilt, pivot });
   }
   function safeRect() {
     const ins = opts.insets();
@@ -463,10 +463,12 @@ export function createMap(stage, host, opts) {
   }
 
   function fitPanorama(animate = true) {
+    if (!layout) return;
     target = { type: 'pano' };
     tweenTo(camFor(projRect(panoRect(), TILT_PANO)), TILT_PANO, animate);
   }
   function focusRect(rect, animate = true) {
+    if (!layout) return;
     target = { type: 'rect', rect };
     tweenTo(camFor(projRect(rect, TILT_FOCUS), kPano() * 3.2), TILT_FOCUS, animate);
   }
@@ -508,6 +510,7 @@ export function createMap(stage, host, opts) {
     if (rect) focusRect(rect, animate);
   }
   function zoomBy(fk) {
+    if (!layout) return;
     const S = safeRect();
     const sx = S.x + S.w / 2;
     const sy = S.y + S.h / 2;
@@ -526,6 +529,16 @@ export function createMap(stage, host, opts) {
     else focusRect(target.rect, animate);
   }
 
+  // 換成 3D 渲染：畫布墊在 SVG 下層、改用 3D 的傾角；之後要重新 build() 才會套用 .has-3d
+  function use3d(canvas, tilts, viewFn) {
+    camEl.insertBefore(canvas, svgEl);
+    has3d = true;
+    TILT_PANO = tilts.pano;
+    TILT_FOCUS = tilts.focus;
+    tilt = TILT_PANO;
+    onView = viewFn;
+  }
+
   // ---------- 滑過分區（滑鼠） ----------
   const zoneOf = (el) => {
     if (!el || !el.closest) return null;
@@ -534,12 +547,22 @@ export function createMap(stage, host, opts) {
     const z = el.closest('[data-zone]');
     return z ? z.getAttribute('data-zone') : null;
   };
+  // 拖曳結束時，瀏覽器會對游標下的元素補發 pointerover；那不是「滑過」，不能因此打開分區預覽。
+  // 拖曳結束後記住游標所在的分區，滑鼠真的離開那個分區之後，才恢復滑過預覽。
+  let hoverHold;
   svgEl.addEventListener('pointerover', (e) => {
     if (e.pointerType !== 'mouse' || pointers.size) return;
-    opts.onZoneHover(zoneOf(e.target), e);
+    const z = zoneOf(e.target);
+    if (hoverHold !== undefined) {
+      if (z === hoverHold) return;
+      hoverHold = undefined;
+    }
+    opts.onZoneHover(z, e);
   });
   svgEl.addEventListener('pointerleave', (e) => {
-    if (e.pointerType === 'mouse') opts.onZoneHover(null, e);
+    if (e.pointerType !== 'mouse') return;
+    hoverHold = undefined;
+    opts.onZoneHover(null, e);
   });
 
   // ---------- 手勢：拖曳平移、雙指縮放、觸控板縮放 ----------
@@ -557,6 +580,8 @@ export function createMap(stage, host, opts) {
     if (tween) stopTween();
     pointers.set(e.pointerId, local(e));
     emit('user-interact');
+    // 按下就取消還沒出現的滑過預覽、收起已出現的預覽（點島空地放開時會改開固定的分區卡，不受影響）
+    if (pointers.size === 1) opts.onZoneHover(null, e);
     if (pointers.size === 1) {
       moved = false;
       lastDragged = false;
@@ -611,6 +636,10 @@ export function createMap(stage, host, opts) {
     }
     if (pointers.size === 0) {
       lastDragged = moved;
+      if (moved && e.pointerType === 'mouse') {
+        const under = document.elementFromPoint(e.clientX, e.clientY);
+        hoverHold = svgEl.contains(under) ? zoneOf(under) : undefined;
+      }
       if (opts.onDrag) opts.onDrag(0, 0, true);
       if (!moved && e.type === 'pointerup' && !(e.target.closest && e.target.closest('.node'))) {
         // 點島上空地＝選這個分區；點水面＝回到全景
@@ -638,7 +667,7 @@ export function createMap(stage, host, opts) {
   }, { passive: false });
 
   return {
-    svg: svgEl, camLayer: camEl, build, fitPanorama, focusWork, focusZone, zoomBy, refit, setStamps, refreshUprights,
+    svg: svgEl, build, use3d, fitPanorama, focusWork, focusZone, zoomBy, refit, setStamps, refreshUprights,
     wasDragged: () => lastDragged,
     get cam() { return cam; },
     get tilt() { return tilt; },
