@@ -1,89 +1,87 @@
-# 作品島 v4（連線規格化＋驗證狀態）施工計畫
+# 3D 視覺實驗：施工紀錄與驗收對照
 
-> 依據：Sky 2026-10-26 上傳的《作品島升級任務書（增補版 v2）》。
-> 狀態：Sky 已於 2026-10-26 回覆「yes」核准；等 Sky 補上 `works-data-v2.json` 後施工。本檔取代 v3 的 `PLAN.md`（v3 計畫可在 git 歷史中查到）。
+> 依據：Sky 2026-10-27 的《3D 版本工作成果島》指示。本檔取代主站的 v4 `PLAN.md`（v4 計畫可在 git 歷史中查到）。
 
-## 0. 卡住的地方（先處理）
+## 為什麼開實驗 repo
 
-**`works-data-v2.json` 不在任何地方。** 這次只上傳了任務書本身；repo（`main` 與所有分支）、專案檔案夾都沒有這個檔。
+現行版經站主確認的問題：外觀淡雅，沒有第一眼的亮點。側面厚度、視差、步道這些技術都有，但力道收著。
 
-任務書要的新欄位全部只能來自這個檔，我不會自己寫：`connections[].id / type / typeLabel / status / statusLabel`、`connectionTypes`（5 種）、`statusLegend`（3 種符號、名稱、meaning）、每件作品的 `statusKey`、`verification`（level、levelLabel、date、note）。
+本實驗要回答一個問題：**換成真 3D 渲染，能不能在不動任何資料與功能的前提下，讓第一秒的立體感與色彩強度明顯跳出來。** 實驗成立才談搬回主 repo；不成立就刪掉本 repo，主站零損失。
 
-還有一個具體證據說明不能用推的：用網站現在的判斷規則（`statusRules` 關鍵字）算，15 件的分布是 **✓ 9／◐ 4／❄ 2**；任務書驗收要的是 **✓ 8／◐ 5／❄ 2**。也就是說 v2 會把現在某一件「已上線」改判成 ◐，是哪一件只有 v2 檔案知道。
+## 調性（不可違反）
 
-## 1. 現況掃描結果
+1. 阿喵不當主角：小貓維持原本的嚮導角色、尺寸與位置（左下提示、導覽時說話）。**本實驗沒有動 `guide.js` 與小貓的 CSS。**
+2. 不要大標題：頁首維持站名＋一行副標。**本實驗沒有動頁首。**
+3. 本站是作品檔案，不是活動頁：不做節慶感、賣課風、行銷語。**本實驗沒有新增任何文案；唯一新增的字是頁尾的「3D 視覺實驗版」。**
 
-| 項目 | 現況 |
+## 做了什麼
+
+| 視覺決策 | 實作 |
 |---|---|
-| 基底分支 | PR #4（拿掉分區名稱前的數字）**已合併**，`main` 最新是 `a335194`。新分支直接從這裡開，不會疊到未合併的東西上 |
-| 網站實際讀的資料檔 | `site/data/works.json`。它除了作品資料，還有 `ui`（全部畫面文字）、`statusRules`、`displayRules`（18 條顯示時刪字的規則） |
-| 根目錄 `works-data.json` | v1 原始資料存檔，網站**沒有讀它**。任務書說「v2 取代 works-data.json」，但實際要接上網站，要改的是 `site/data/works.json` |
-| 連結數 | 23 個，和任務書一致 |
-| 連線 | 7 條，現有欄位只有 from／to／label／style（solid／dashed）。地圖、右側面板「連線」分頁、詳情卡「關聯」三處都在用 |
-| 狀態符號 | 目前由程式從 status 文字比對關鍵字判斷（`util.js` 的 `statusKind`），符號是 SVG 畫的 ✓／半滿圓／雪花 |
-| 圖例 | 島嶼模式左下 `#legend`，由 `main.js` 的 `renderLegend` 畫：總件數、分區、實線／虛線／步道 |
-| 清單模式 | `panel.js` 的 `renderListView`；每列有「在島上定位」按鈕，會切回島嶼模式並開該作品詳情 |
-| 部署檢查 | `tools/validate-data.py` 在部署前檢查資料檔（必要欄位、件數對帳、excluded 不得出現、程式用到的 ui 文字都要存在）；沒過就不部署 |
+| 真 3D 島體 | 五座島以 `layout.json` 的輪廓（同一條平滑曲線，`terrain.js` 的 `smoothPoints`）擠出成立體地塊：圓角頂緣、分層崖面、岸邊沙灘與浪花、真實陰影（shadow map）＋水面投影 |
+| 五區主題色 | `theme3d.js`：校園 `#f69a48`／`#b95f22`、教材 `#4cbb77`／`#27784a`、遊戲 `#a678f5`／`#6a3fc0`、工具 `#3fa9e8`／`#1f6fa8`、凍結 `#bcd8ef`／`#7498bb`（冷色） |
+| 深海與活氣 | 海面著色器：`#0e5a7d` → `#17a2b8` 漸層（近島淺、外海深）＋微光波紋＋岸邊浪花；一艘在開闊水道來回輕晃的小船；三片緩慢飄移的雲影 |
+| 暖色日光 | 單一暖色平行光（左前上方）＋天空／海面半球光；頂面受光、右側崖面背光；不做日夜切換 |
 
-## 2. 會改哪些檔（拿到 v2、Sky 回 yes 之後）
+### 技術路線
+
+- Three.js 0.180.0（官方 minified 版）放在 `site/vendor/three/`，用 importmap 對應；沒有打包工具，不連外部 CDN，不載入字體、模型、圖片或音效。島、樹、地標、步道、小船全部用幾何基元拼裝；頂面與崖面紋理用 Canvas 程序產生。
+- **只換渲染層**：`scene3d.js` 的畫布墊在原本的 SVG 下面。SVG 照舊畫節點、分區標籤、連線、印章與告示牌，島的頂面留著當作透明的點擊範圍。
+- **鏡頭對齊**：`map.js` 每次更新 viewBox 都呼叫 `onView`。正交相機的俯角＝asin(傾角)；SVG 地面座標與 3D 頂面（y=0）在數學上是同一個投影，所以節點永遠落在島上。
+- 鏡頭固定等角：全景 45°、聚焦 50°，不開放旋轉。拖曳、縮放、全景／回到本區、點作品推近都沿用 `map.js` 原本的程式。
+- 連線用投影後的 SVG 弧線（原本的 `connections.js` 不變），所以實線／虛線語意與圖例文字都沒變。步道在 3D 裡是木色棧道／拱橋，和彩色連線分開，圖例照原本分開標示。
+- **自動退回**：沒有 WebGL、不支援 importmap，或 3D 模組載入失敗時，整張地圖改用原本的 2.5D SVG 版。已實測：擋掉 three.js 下載後，網站照常以 2.5D 版運作。
+- 深色模式：3D 場景換成「傍晚」配色。主色降亮度但保留色相，海面更深，陽光變弱；文字層照原本的深色樣式。資料沒有動。
+
+### 動到的檔案
 
 ```
-works-data.json            以 v2 原檔整份取代（存檔用，內容不動一字）
-site/data/works.json       statusRules 段移除（改由 statusKey＋statusLegend 決定）；把 v2 的資料段（meta／intro／zones／works／connections／excluded
-                           ＋新增的 connectionTypes、statusLegend）換進來；
-                           保留原有 ui／displayRules；ui 只「新增」第 3 節列的幾個介面字，舊字不改
-site/js/data-loader.js     讀入 connectionTypes、statusLegend，交給畫面使用
-site/js/util.js            符號改由作品的 statusKey 對照 statusLegend 產生，不再靠關鍵字猜
-site/js/main.js            renderLegend：在實線／虛線／步道下方加狀態圖例（符號＋名稱＋meaning）
-site/js/panel.js           清單模式：頂部加同一份狀態圖例；作品清單之後加「作品關係」專區（7 條）
-site/js/detail.js          狀態標籤下方加「驗證：{levelLabel}（{date}）— {note}」
-                           （原訂「關聯列改讀 typeLabel」不做：任務書要求既有文案不動，類型只在作品關係專區顯示）
-site/js/connections.js     不需改：線條實線／虛線與提示文字本來就讀資料檔的 style 與 label
-site/css/panel.css         作品關係專區、狀態圖例、驗證列的樣式；not-linked 用灰字＋虛線邊框；390px 不溢出
-site/css/island.css        島嶼圖例多一區的排版
-tools/validate-data.py     新增檢查：statusKey 必須在 statusLegend 裡、connection 的 type 必須在
-                           connectionTypes 裡、status 只能是 linked／not-linked、每件都要有 verification
-README.md                  補一段「新欄位在哪裡改」
-PLAN.md                    換成本計畫（v3 計畫留在 git 歷史）
+新增  site/js/scene3d.js        3D 地圖本體
+新增  site/js/theme3d.js        配色與渲染參數
+新增  site/css/scene3d.css      畫布位置；3D 模式下隱藏 SVG 地形
+新增  site/vendor/three/        three.core.min.js、three.module.min.js、LICENSE
+修改  site/index.html           importmap、modulepreload、頁尾「3D 視覺實驗版」
+修改  site/js/main.js           載入 3D 模組（失敗就退回）、把畫布交給地圖
+修改  site/js/map.js            onView 鉤子、3D 傾角、把景物位置交給 3D（2.5D 行為不變）
+修改  site/js/parallax.js       onMove：讓 3D 水面跟著視差
+修改  site/js/terrain.js        smoothPoints、offsetPoly（只新增函式）
+未動  site/data/works.json、site/data/layout.json、tools/validate-data.py、其餘模組
 ```
 
-**作品關係專區的位置**：放在作品清單**之後**，只放這一處。狀態圖例放在清單**頂部**，兩模式共用同一個渲染函式。
+## 不變量（逐項成立）
 
-## 3. 需要新增的介面文字（放進 `ui`，請 Sky 一起看過）
+| # | 項目 | 結果 |
+|---|---|---|
+| 1 | 作品 15 件；各區 2／7／2／2／2；國語、自然維持空子區告示牌；23 個連結逐字相同 | ✅ Playwright 實測 |
+| 2 | `tools/validate-data.py` 照常通過 | ✅ 資料檔一字未改，「資料檔檢查通過（0 個提醒）」 |
+| 3 | excluded 四項在島嶼模式、清單模式都搜不到；不放聯絡方式；蓬萊只有 GitHub repo、沒有遊玩連結 | ✅ 實測（含 aria-label、title） |
+| 4 | 狀態圖例與驗證列照 v2 資料；符號分布 ✓8／◐5／❄2 | ✅ 實測 |
 
-這些是畫面上的標題與標籤，不是作品內容；內容（類型名、狀態名、meaning、驗證說明）一律照 v2 原文。
+## 驗收清單
 
-| key | 文字 |
-|---|---|
-| `list.relationsTitle` | 作品關係 |
-| `list.legendTitle` | 狀態圖例 |
-| `legend.statusTitle` | 狀態圖例 |
-| `detail.verification` | 驗證： |
+截圖都在 `docs/lab-screenshots/`（不會部署）。
 
-「尚未串接入口」這幾個字用 v2 的 `statusLabel`，不另寫。如果 v2 裡已有這些標題文字，就用 v2 的，上表作廢。
+1. **第一屏並排**：`01-desktop-firstscreen.jpg`（1440×900）、`02-desktop-map.jpg`（只截地圖）、`03-ipad-portrait.jpg`（820×1180）、`04-phone-390.jpg`。左邊是現行版，右邊是 3D 版。
+2. **島形與色票**：五島的位置、海灣岬角、步道走向都和現行版重合（同一份 `layout.json`、同一條平滑曲線）。主題色照色票，凍結區維持冷色。
+3. **行為逐項相同**（Playwright 實測，全部通過）：點節點開詳情卡＋鏡頭推近（`05-focus-work.jpg`）、網址 hash、連線開關、已逛完章、帶我逛逛開始與停止、`#skynote` 深層連結（`06-deeplink-skynote.jpg`）、清單模式「作品關係」7 條＋狀態圖例、390px 點節點開詳情（`08-phone-detail.jpg`）。深色模式見 `07-dark-mode.jpg`。
+4. **效能自述**
+   - DPR：上限 2（`min(devicePixelRatio, 2)`）。裝置 DPR 小於 1.5 時才開反鋸齒，高 DPR 螢幕不需要。
+   - 降解析：每 60 格算一次平均幀間隔，超過 24 ms（約低於 42 fps）就降一階（2 → 1.5 → 1.25 → 1 → 0.8）；連續 3 次低於 18 ms 才升回一階。
+   - 省電：陰影只在建場景與開場浮出時計算。鏡頭在動才跑 60 fps，平常 30 fps。畫面不在視窗內、分頁切到背景、切到清單模式，或開啟「減少動態效果」時，停止繪製迴圈。所有景物併成少數幾個網格，每座島只要 3 到 4 次繪製。
+   - 新增檔案（原始／gzip）：`three.core.min.js` 381 KB／100 KB、`three.module.min.js` 339 KB／79 KB、`scene3d.js` 36 KB／13 KB、`theme3d.js` 2.6 KB／1.5 KB、`scene3d.css` 1.6 KB／0.9 KB。
+   - 體積比較：現行版 JS 共 110 KB（gzip 36 KB），3D 版 JS 共 869 KB（gzip 229 KB），約 7.9 倍（gzip 6.3 倍），沒有超過一個數量級。
+   - 首屏可互動：模擬 4G（9 Mbps、150 ms 往返）、gzip 傳輸的條件下，3D 版約 1.7 秒、傳輸 274 KB，現行版約 1.1 秒、傳輸 80 KB。不壓縮時 3D 版約 2.1 秒。這是在桌機 CPU 上模擬網路，**還沒用學校 iPad 實機量過**。
+5. **減少動態效果**：視差、浮動（小船）、雲影、水面波紋、開場浮出全部停止。實測地圖畫面 1.5 秒內逐像素不變，滑鼠移動也不觸發視差；所有功能照常可用。
+6. **390px**：節點只顯示編號（沿用 narrow 版面規則），`scrollWidth` 等於 390，沒有溢出。
+7. **console**：本機預覽一般模式、深色、減少動態、390px 都沒有錯誤或警告。GitHub Pages 要等合併到 `main`、在 Settings → Pages 啟用後才能驗。
 
-## 4. 不會動的東西
+## 已知限制
 
-- 15 件作品的所有既有文字、23 個網址、excluded 四項、intro 全文（v2 若與 v1 有差，我會先逐欄比對回報，**不會默默套用**）。
-- 地圖、地形、步道、鏡頭、視差、帶我逛逛、印章、錨點、縮放、連線開關等功能程式不改邏輯。
-- 視覺風格、版面結構、既有 18 條 displayRules。
-- 不新增作品、連線、類型或狀態種類。
+- 插圖資產槽（`layout.json` 的 `art`）在 3D 模式下不使用，只有退回 2.5D 版時才有作用。
+- 鏡頭在全景和聚焦之間做大幅縮放的那 0.56 秒，沿用原本的 CSS transform 補間：畫布和 SVG 一起縮放，所以不會錯位，但立體高度會短暫跟著傾角比例伸縮，停下來就恢復。
+- 景物（樹、地標）沿用 2.5D 版的擺放演算法，在 3D 裡放大了 1.25 到 1.45 倍。它們在 SVG 文字層下面，不會擋住節點。
 
-## 5. 風險與我會怎麼處理
+## 回退
 
-1. **v2 與 v1 不一致**：換檔前先跑逐欄比對（15 件、23 網址逐字、註記文字、excluded），有任何差異先列給 Sky，不自己決定。
-2. **status 文字被顯示規則刪字**：現有 displayRules 會把蓬萊的 status 尾巴「，不要給任何遊玩連結」在畫面上刪掉。任務書說 status「照舊顯示」，我理解為維持 v1 的畫面樣子，這條規則保留。
-3. **狀態篩選結果會變**：右側面板的狀態篩選會改用 statusKey，所以會有一件從「上線中」移到「有註記」。這是 v2 資料造成的預期結果，驗收時會指出是哪一件。
-4. **驗證說明裡的字被 excluded 檢查擋下**：口說練習的 verification.note 提到 englishspeak。Sky 2026-10-26 選擇比照 v1：新增一條顯示規則，畫面拿掉「；此為正式版，舊 englishspeak 站不收錄」，資料檔維持原文。
-5. **`style` 欄位**：v2 保留了 style（c7 為 dashed），線的畫法照舊讀它。
-6. **符號**：島上節點目前用 SVG 畫符號（跨裝置不依賴字型）。我會讓 statusLegend 決定「哪件用哪個符號、叫什麼名字」，畫法沿用現有 SVG；若 v2 的 key 對不上現有三種，就改成直接顯示 v2 的符號字元。
-
-## 6. 回退
-
-- 全部在新分支、一個 PR；不直接改 `main`。
-- 合併後有問題：在 GitHub 上對該 PR 按 Revert，或把 `site/data/works.json` 與 `site/js/` 回到 `a335194`。
-- 部署前有資料檢查，資料檔壞掉不會上線，線上維持上一版。
-
-## 7. 驗收（完成時照任務書 7 項逐項回報）
-
-本地用 Playwright 開站跑：15 件／各區件數、23 連結逐字對照 v1、作品關係 7 條與類型分布（3／1／1／1／1）、符號分布（8／5／2）、15 張詳情卡驗證列逐字比對（卡丁車、史地讚抽查句）、excluded 全頁搜尋、凍結原因全文、舊功能點按、390px 截圖、console 錯誤。合併上線後再對 GitHub Pages 驗一次。
+- 實驗不成立：刪除本 repo，主站完全沒動。
+- 只想關掉 3D、保留 repo：把 `index.html` 的 importmap 那行刪掉，3D 模組會載入失敗，自動退回 2.5D 版。

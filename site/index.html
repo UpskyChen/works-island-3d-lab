@@ -8,6 +8,12 @@
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/island.css">
   <link rel="stylesheet" href="css/panel.css">
+  <link rel="stylesheet" href="css/scene3d.css">
+  <!-- 3D 視覺實驗版：Three.js 放在 vendor/（不連外部 CDN），用 importmap 對應 "three" -->
+  <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
+  <link rel="modulepreload" href="vendor/three/three.core.min.js">
+  <link rel="modulepreload" href="vendor/three/three.module.min.js">
+  <link rel="modulepreload" href="js/scene3d.js">
 </head>
 <body>
   <header class="top wrap">
@@ -85,6 +91,8 @@
 
   <footer class="site-footer">
     <div class="wrap" id="footer-text"></div>
+    <!-- 實驗版標示（不在資料檔裡：資料檔與主站共用、一字不改） -->
+    <div class="wrap lab-note">3D 視覺實驗版</div>
   </footer>
 
   <script type="module" src="js/main.js"></script>

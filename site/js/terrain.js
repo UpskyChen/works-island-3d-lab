@@ -189,3 +189,50 @@ export function walkwayGeom(A, B, ca, cb, { bend = 0, rise = 0, inset = 16, samp
   }
   return { ground, deck, len };
 }
+
+// 把 smoothPath 的同一條平滑曲線取樣成折線（3D 地塊用，和 SVG 的輪廓完全重合）
+export function smoothPoints(pts, { dx = 0, dy = 0, s = 1 } = {}, seg = 6) {
+  const P = pts.map(([x, y]) => [dx + x * s, dy + y * s]);
+  const n = P.length;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = P[(i - 1 + n) % n];
+    const p1 = P[i];
+    const p2 = P[(i + 1) % n];
+    const p3 = P[(i + 2) % n];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    for (let j = 0; j < seg; j++) {
+      const t = j / seg;
+      const u = 1 - t;
+      const a = u * u * u;
+      const b = 3 * u * u * t;
+      const c = 3 * u * t * t;
+      const d = t * t * t;
+      out.push([a * p1[0] + b * c1[0] + c * c2[0] + d * p2[0], a * p1[1] + b * c1[1] + c * c2[1] + d * p2[1]]);
+    }
+  }
+  return out;
+}
+
+// 封閉折線往外（d>0）或往內（d<0）平移 d：每個點沿相鄰兩邊法線的平均方向移動
+export function offsetPoly(P, d) {
+  const n = P.length;
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = P[i];
+    const [x2, y2] = P[(i + 1) % n];
+    area += x1 * y2 - x2 * y1;
+  }
+  const sgn = area > 0 ? 1 : -1; // 讓法線朝外
+  return P.map((p, i) => {
+    const a = P[(i - 1 + n) % n];
+    const b = P[(i + 1) % n];
+    let nx = (b[1] - a[1]) * sgn;
+    let ny = -(b[0] - a[0]) * sgn;
+    const l = Math.hypot(nx, ny) || 1;
+    nx /= l;
+    ny /= l;
+    return [p[0] + nx * d, p[1] + ny * d];
+  });
+}

@@ -1,12 +1,13 @@
 // 分層視差：水面、倒影、島群、雲各自小幅位移，做出前後景深。
 // 來源：滑鼠位置（桌機）、拖曳地圖（iPad／手機）、裝置傾斜（使用者按「傾斜視差」允許後才啟用）。
 // 只改 transform，每格最多更新一次；鏡頭移動中或「減少動態效果」時不動。
+// 3D 版：水面畫在 3D 畫布裡，位移量改由 onMove 交給 3D 場景（sea 圖層不傳）。
 import { reducedMotion } from './util.js';
 
 // 各圖層的最大位移（px）：越前面的圖層動得越多
 const DEPTH = { sea: -5, shadows: 3, land: 7, sky: 16 };
 
-export function createParallax(stage, { sea, land, sky, shadows, scale }) {
+export function createParallax(stage, { sea, land, sky, shadows, scale, onMove }) {
   let cur = { x: 0, y: 0 };
   let goal = { x: 0, y: 0 };
   let raf = 0;
@@ -26,6 +27,7 @@ export function createParallax(stage, { sea, land, sky, shadows, scale }) {
     if (sea) sea.style.transform = tr(DEPTH.sea);
     if (land) land.style.transform = tr(DEPTH.land);
     if (sky) sky.style.transform = tr(DEPTH.sky);
+    if (onMove) onMove(cur.x, cur.y);
     // 倒影在 SVG 裡，位移以地圖單位計算（除以目前縮放），讓畫面上的位移固定為幾 px
     const sh = shadows();
     if (sh) {
