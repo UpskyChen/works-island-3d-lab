@@ -94,6 +94,7 @@
         }
       ],
       "name": "溪口國小 3D 校園",
+      "preview": "assets/previews/xikou-3d-campus.webp",
       "problem": "舊站「山海溪口」老舊，校園空間與教學成果難以呈現。",
       "related": [
         "xikou-kart",
@@ -131,6 +132,7 @@
         }
       ],
       "name": "溪口卡丁車・動物車隊",
+      "preview": "assets/previews/xikou-kart.webp",
       "problem": "想在自己的校園場景裡，做一款學生能直接玩的賽車遊戲。",
       "related": [
         "xikou-3d-campus"

@@ -125,6 +125,7 @@
    | `tags` | | 標籤（也會被搜尋到） |
    | `displayNote`、`freezeReason` | | 卡片上的「說明」框、「凍結原因」框 |
    | `relationLabel` | | 延伸作品的小標籤；有這個欄位的作品會排在主作品右下方 |
+| `preview` | | 預覽圖，例如 `"assets/previews/my-new-work.webp"`（見下方「我要放作品預覽圖」）；沒有圖就不寫 |
 
 4. **同一個檔案裡還要改三個數字**（檢查程式會逐一提醒）：
    - `meta` 裡的 `"totalWorks"`：總件數加 1。
@@ -135,6 +136,21 @@
    - `type` 要用 `connectionTypes` 裡有的種類；`status` 只能是 `linked` 或 `not-linked`（尚未串接入口，畫成虛線時 `style` 用 `"dashed"`）。
    - 地圖只會畫這裡列出的線；清單模式最下方的「作品關係」也照這裡逐條列出。
 6. 照 **步驟 B** 存檔。島的形狀不用改：放不下時，網站會自動把那座島等比例放大。
+
+### 我要放作品預覽圖
+
+詳情卡（地圖上點作品打開的卡片）與清單模式，會在作品名稱下方顯示預覽圖。哪件作品有圖就顯示，沒寫的作品照舊。
+
+1. **準備圖片**：作品畫面截圖即可，不用加字。建議比例 16:10（例如 1200×750）、WebP 格式、每張 150 KB 以下；JPG、PNG 也可以。卡片固定 16:10，比例不同時會置中裁切邊緣。截圖裡不要有學生的姓名、照片或帳號。
+2. **檔名**：用作品的 `id`（在 `works.json` 每件作品的第一行），只能用小寫英文、數字和減號，例如 `skynote.webp`。
+3. **上傳**：打開 `site` → `assets` → `previews` 資料夾，按右上角 **Add file → Upload files**，把圖片拖進去，再按 **Commit changes**。
+   - 注意：要先進到 `previews` 資料夾裡面才上傳。不要用 **Create new file** 打 `previews`，那樣會建出一個叫 previews 的空白檔案，而不是資料夾。
+4. **在 works.json 寫上圖片位置**：照 **步驟 A** 打開 `works.json`，搜尋作品名稱，在 `"name"` 那一行的下一行加上：
+   ```json
+   "preview": "assets/previews/skynote.webp",
+   ```
+   檔名要和上傳的完全一樣（含大小寫、副檔名）。
+5. 照 **步驟 B** 存檔。檢查程式會確認圖片真的存在：檔名寫錯或圖片還沒上傳，Actions 會出現紅叉並指出是第幾行，線上網站維持上一版，不會出現破圖。圖片超過 300 KB 會提醒（不擋部署）。
 
 ## 檔案結構
 
@@ -166,6 +182,7 @@ site/                      ← 發佈到 GitHub Pages 的整個資料夾
   data/works.json          ← ★ 唯一要改的資料檔：作品、自我介紹、連結、畫面文字、顯示規則
   data/layout.json         ← 地圖版面：島嶼輪廓座標、位置、裝飾、步道（不含作品內容）
   assets/props.svg         ← 原創小插畫（標題列小物、樹木、地標建築）
+  assets/previews/         ← 作品預覽圖（檔名＝作品 id，見「我要放作品預覽圖」）
 tools/validate-data.py     ← 資料檔檢查（部署前由 GitHub Actions 執行）
 tools/gen-islands.mjs      ← 島嶼輪廓產生器（只有想重新設計島嶼形狀時才用）
 works-data.json            ← 站主提供的原始資料檔（原樣保留作為紀錄，網站不讀它）
