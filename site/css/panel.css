@@ -38,6 +38,10 @@
 .card-kicker { display: flex; align-items: center; gap: 8px; margin: 0 44px 4px 0; color: var(--muted); font-size: .88rem; font-weight: 600; }
 .card-title { margin: 0 0 4px; font-size: 1.35rem; line-height: 1.35; font-weight: 800; }
 .card-title:focus { outline: none; }
+.card-preview {
+  display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; margin: 8px 0 10px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2);
+}
 .card-meta { margin: 0 0 8px; color: var(--muted); font-size: .9rem; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .rel-badge { display: inline-block; border-radius: 999px; padding: 1px 10px; font-size: .84rem; border: 1.5px solid var(--z-campus-ink); color: var(--z-campus-ink); font-weight: 700; }

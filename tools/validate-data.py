@@ -330,6 +330,15 @@ def check_works(d):
             url = need(P, l, 'url', str, lw)
             if url and (not url.startswith('https://') or re.search(r'\s', url)):
                 report('error', P, ln(l, 'url'), f'{lw} 的網址要以 https:// 開頭，而且不能有空格')
+        prev = opt(P, w, 'preview', str, where)
+        if prev:
+            if not re.fullmatch(r'assets/previews/[a-z0-9][a-z0-9-]*\.(webp|jpg|jpeg|png)', prev):
+                report('error', P, ln(w, 'preview'), f'{where} 的 preview 要寫成 "assets/previews/作品id.webp"（也可以是 .jpg、.png；檔名只能用小寫英文、數字和減號）')
+            elif not os.path.isfile(os.path.join(SITE, prev)):
+                report('error', P, ln(w, 'preview'), f'{where} 的預覽圖 site/{prev} 不存在：請確認圖片已上傳到 site/assets/previews/，檔名（含大小寫、副檔名）要和這裡一樣')
+            elif os.path.getsize(os.path.join(SITE, prev)) > 300_000:
+                kb = os.path.getsize(os.path.join(SITE, prev)) // 1024
+                report('warning', P, ln(w, 'preview'), f'{where} 的預覽圖 {kb} KB，建議 150 KB 以下（學校 iPad、手機載入較快）')
         if status and '不要給任何遊玩連結' in status:
             for l in links or []:
                 if isinstance(l, dict) and isinstance(l.get('url'), str) and not l['url'].startswith('https://github.com/'):

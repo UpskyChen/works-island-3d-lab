@@ -1,4 +1,4 @@
-// 詳情卡：問題 → 做法 → 成果＋狀態標籤＋說明／凍結原因＋連結（內容全部來自資料檔）
+// 詳情卡：預覽圖＋問題 → 做法 → 成果＋狀態標籤＋說明／凍結原因＋連結（內容全部來自資料檔）
 import { el, statusKind, statusIcon, statusEntry, statusKinds } from './util.js';
 import { t } from './text.js';
 
@@ -13,6 +13,13 @@ export function renderCard(w, model, { inList = false, onRelated } = {}) {
       el('span', { class: 'num-badge zone-' + w.zone, text: String(w.num) }), meta.join('・')
     ]));
     card.appendChild(el('h2', { class: 'card-title', id: 'detail-title', tabindex: '-1', text: w.name }));
+  }
+  // 預覽圖（資料檔的 preview，沒有就不顯示）：打開卡片時才下載；載入失敗就整張拿掉，不留破圖
+  if (w.preview) {
+    card.appendChild(el('img', {
+      class: 'card-preview', src: w.preview, alt: w.name, loading: 'lazy', decoding: 'async',
+      onerror: (e) => e.target.remove()
+    }));
   }
   if (w.audience) card.appendChild(el('p', { class: 'card-meta', text: (inList ? meta.join('・') + '・' : '') + t('detail.audience') + w.audience }));
 
