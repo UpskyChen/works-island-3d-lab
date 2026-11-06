@@ -1,7 +1,7 @@
 {
   "meta": {
     "countsByZone": {
-      "campus": 2,
+      "campus": 3,
       "frozen": 2,
       "games": 2,
       "subjects": 7,
@@ -11,7 +11,7 @@
     "owner": "Upsky（阿喵老師）",
     "sourceOfTruth": "本檔由站主本人提供的網址與 repo 逐件驗證後整理。任何欄位不足處保持空白或照實註記，禁止自行編造作品、數字、功能或連結。",
     "title": "阿喵老師的作品島",
-    "totalWorks": 15,
+    "totalWorks": 16,
     "schemaVersion": 2,
     "upgradeNote": "v2 升級（2026-10-26）：連線改為正式資料紀錄（新增 id、type、status）；每件作品新增 statusKey 與 verification（驗證狀態）欄位；新增 statusLegend 狀態圖例定義。其餘作品內容、連結、註記與 v1 完全相同，未經站主確認不得改寫。"
   },
@@ -23,7 +23,7 @@
   },
   "zones": [
     {
-      "count": 2,
+      "count": 3,
       "id": "campus",
       "name": "校園主站與延伸"
     },
@@ -99,7 +99,8 @@
       "related": [
         "xikou-kart",
         "photo-blocks",
-        "recorder-helper"
+        "recorder-helper",
+        "xikou-decor"
       ],
       "result": "2026-10-12 全站上線並持續更新至 v234；內顯電腦幀時間由 37.5ms 優化到 8.6ms，並有自動降畫質機制。",
       "status": "已上線，持續更新",
@@ -150,6 +151,36 @@
         "levelLabel": "部分驗證・待實機驗收",
         "date": "2026-10-26",
         "note": "repo 2026-10-26 建立、GitHub Pages 已公開、桌機已測（站主回報）；iPad 多點觸控與長時間效能待實機驗收。"
+      },
+      "zone": "campus"
+    },
+    {
+      "approach": "瀏覽器教室布置工具：家具拖進教室、2D 俯視與 3D 立體切換、復原與重做、匯出作品、通行檢查；以勤學樓 4F 六年四班教室（8.89 × 7.78 m）為場景。",
+      "audience": "溪口國小學生",
+      "id": "xikou-decor",
+      "links": [
+        {
+          "label": "開啟網站",
+          "url": "https://upsky0210.github.io/xikou-decor/"
+        }
+      ],
+      "name": "布置溪口",
+      "preview": "assets/previews/xikou-decor.webp",
+      "related": [
+        "xikou-3d-campus"
+      ],
+      "relationLabel": "3D 校園的延伸作品",
+      "status": "公測版",
+      "statusKey": "noted",
+      "tags": [
+        "延伸作品",
+        "教室布置"
+      ],
+      "verification": {
+        "level": "verified-partial",
+        "levelLabel": "部分驗證・公測中",
+        "date": "2026-11-05",
+        "note": "網站 2026-11-05 可開啟；目前為公測版。"
       },
       "zone": "campus"
     },
@@ -693,6 +724,17 @@
       "to": "angry-cat",
       "type": "same-purpose",
       "typeLabel": "同用途"
+    },
+    {
+      "from": "xikou-3d-campus",
+      "id": "c8",
+      "label": "延伸作品（以校園教室為場景獨立製作）",
+      "status": "linked",
+      "statusLabel": "已串接",
+      "style": "solid",
+      "to": "xikou-decor",
+      "type": "extension",
+      "typeLabel": "延伸作品"
     }
   ],
   "connectionTypes": [
